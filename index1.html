@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      color: #222;
+    }
+    header {
+      background: #0077cc;
+      color: #fff;
+      padding: 15px;
+      text-align: center;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-top: 30px;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 5px;
+      color: #0077cc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    input, select, button {
+      padding: 7px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background: #0077cc;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fa3;
+    }
+    .income {
+      color: green;
+      font-weight: bold;
+    }
+    .expense {
+      color: red;
+      font-weight: bold;
+    }
+    .quote-box {
+      text-align: center;
+      margin: 20px;
+      font-style: italic;
+      color: #444;
+    }
+    .totals {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .analysis-section {
+      margin-top: 30px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>💰 Financial Tracker</h1>
+    <div id="quote" class="quote-box"></div>
+  </header>
+
+  <div class="container">
+
+    <!-- Accounts -->
+    <h2>Accounts</h2>
+    <table id="accountsTable">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Type</th>
+          <th>Balance (₹)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>HDFC Bank</td>
+          <td>Bank</td>
+          <td class="balance" data-account="HDFC Bank">25000</td>
+          <td><button onclick="setBalance('HDFC Bank')">Set Balance</button></td>
+        </tr>
+        <tr>
+          <td>Indian Bank</td>
+          <td>Bank</td>
+          <td class="balance" data-account="Indian Bank">8000</td>
+          <td><button onclick="setBalance('Indian Bank')">Set Balance</button></td>
+        </tr>
+        <tr>
+          <td>Cash</td>
+          <td>Cash</td>
+          <td class="balance" data-account="Cash">1200</td>
+          <td><button onclick="setBalance('Cash')">Set Balance</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="totals">Total Balance: ₹<span id="totalBalance">0</span></div>
+
+    <!-- Transactions -->
+    <h2>Add Transaction</h2>
+    <form id="transactionForm">
+      <input type="date" id="date" required>
+      <input type="text" id="description" placeholder="Description" required>
+      <input type="number" id="amount" placeholder="Amount (₹)" required>
+      <select id="type" required>
+        <option value="Expense">Expense</option>
+        <option value="Income">Income</option>
+      </select>
+      <select id="account" required>
+        <option value="HDFC Bank">HDFC Bank</option>
+        <option value="Indian Bank">Indian Bank</option>
+        <option value="Cash">Cash</option>
+      </select>
+      <button type="submit">Add</button>
+    </form>
+
+    <h2>Transactions</h2>
+    <div id="transactionsList"></div>
+
+    <!-- Analysis -->
+    <div class="analysis-section">
+      <h2>Analysis</h2>
+      <h3>Daily Totals</h3>
+      <div id="dailyTotals"></div>
+
+      <h3>Weekly Totals</h3>
+      <input type="week" id="weekPicker">
+      <div id="weeklyTotals"></div>
+
+      <h3>Monthly Totals</h3>
+      <input type="month" id="monthPicker">
+      <div id="monthlyTotals"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const form = document.getElementById("transactionForm");
+    const transactionsList = document.getElementById("transactionsList");
+
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    let accounts = JSON.parse(localStorage.getItem("accounts")) || {
+      "HDFC Bank": 25000,
+      "Indian Bank": 8000,
+      "Cash": 1200
+    };
+
+    // Format date to DD Month YYYY
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      });
+    }
+
+    // Render accounts
+    function renderAccounts() {
+      document.querySelectorAll(".balance").forEach(cell => {
+        const account = cell.getAttribute("data-account");
+        cell.innerText = accounts[account].toFixed(2);
+      });
+      updateTotalBalance();
+    }
+
+    // Update total balance
+    function updateTotalBalance() {
+      let total = Object.values(accounts).reduce((a, b) => a + b, 0);
+      document.getElementById("totalBalance").innerText = total.toFixed(2);
+    }
+
+    // Set balance manually
+    function setBalance(account) {
+      const newBalance = prompt(`Enter new balance for ${account}:`);
+      if (newBalance !== null && !isNaN(newBalance)) {
+        accounts[account] = parseFloat(newBalance);
+        localStorage.setItem("accounts", JSON.stringify(accounts));
+        renderAccounts();
+      }
+    }
+    window.setBalance = setBalance;
+
+    // Render transactions grouped by date
+    function renderTransactions() {
+      transactionsList.innerHTML = "";
+      const grouped = {};
+
+      transactions.forEach(t => {
+        if (!grouped[t.date]) grouped[t.date] = [];
+        grouped[t.date].push(t);
+      });
+
+      Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a)).forEach(date => {
+        const section = document.createElement("div");
+        section.innerHTML = `<h4>${formatDate(date)}</h4>`;
+        const table = document.createElement("table");
+        table.innerHTML = `
+          <tr><th>Description</th><th>Amount</th><th>Type</th><th>Account</th></tr>
+        `;
+        grouped[date].forEach(t => {
+          const row = table.insertRow();
+          row.insertCell(0).innerText = t.description;
+          row.insertCell(1).innerHTML = `<span class="${t.type === 'Expense' ? 'expense' : 'income'}">${t.amount}</span>`;
+          row.insertCell(2).innerText = t.type;
+          row.insertCell(3).innerText = t.account;
+        });
+        section.appendChild(table);
+        transactionsList.appendChild(section);
+      });
+    }
+
+    // Save transaction
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const today = new Date().toISOString().split("T")[0];
+      const date = document.getElementById("date").value;
+      if (date > today) {
+        alert("Future dates are not allowed.");
+        return;
+      }
+
+      const description = document.getElementById("description").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      const type = document.getElementById("type").value;
+      const account = document.getElementById("account").value;
+
+      const transaction = { date, description, amount, type, account };
+      transactions.push(transaction);
+
+      if (type === "Expense") accounts[account] -= amount;
+      else accounts[account] += amount;
+
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+      localStorage.setItem("accounts", JSON.stringify(accounts));
+
+      renderTransactions();
+      renderAccounts();
+      form.reset();
+    });
+
+    // Daily totals
+    function renderDailyTotals() {
+      const grouped = {};
+      transactions.forEach(t => {
+        if (!grouped[t.date]) grouped[t.date] = { income: 0, expense: 0 };
+        if (t.type === "Expense") grouped[t.date].expense += t.amount;
+        else grouped[t.date].income += t.amount;
+      });
+
+      let html = "<table><tr><th>Date</th><th>Income</th><th>Expense</th></tr>";
+      Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a)).forEach(date => {
+        html += `<tr><td>${formatDate(date)}</td><td class="income">₹${grouped[date].income.toFixed(2)}</td><td class="expense">₹${grouped[date].expense.toFixed(2)}</td></tr>`;
+      });
+      html += "</table>";
+      document.getElementById("dailyTotals").innerHTML = html;
+    }
+
+    // Weekly totals
+    function renderWeeklyTotals(week) {
+      if (!week) return;
+      const [year, weekNum] = week.split("-W");
+      const firstDay = new Date(year, 0, 1 + (weekNum - 1) * 7);
+      const lastDay = new Date(firstDay);
+      lastDay.setDate(firstDay.getDate() + 6);
+
+      let totals = { income: 0, expense: 0 };
+      transactions.forEach(t => {
+        const d = new Date(t.date);
+        if (d >= firstDay && d <= lastDay) {
+          if (t.type === "Expense") totals.expense += t.amount;
+          else totals.income += t.amount;
+        }
+      });
+
+      document.getElementById("weeklyTotals").innerHTML =
+        `<p>Income: <span class="income">₹${totals.income.toFixed(2)}</span> | Expense: <span class="expense">₹${totals.expense.toFixed(2)}</span></p>`;
+    }
+    document.getElementById("weekPicker").addEventListener("change", e => renderWeeklyTotals(e.target.value));
+
+    // Monthly totals
+    function renderMonthlyTotals(month) {
+      if (!month) return;
+      const [year, monthNum] = month.split("-");
+      let totals = { income: 0, expense: 0 };
+
+      transactions.forEach(t => {
+        const d = new Date(t.date);
+        if (d.getFullYear() == year && (d.getMonth() + 1) == parseInt(monthNum)) {
+          if (t.type === "Expense") totals.expense += t.amount;
+          else totals.income += t.amount;
+        }
+      });
+
+      document.getElementById("monthlyTotals").innerHTML =
+        `<p>Income: <span class="income">₹${totals.income.toFixed(2)}</span> | Expense: <span class="expense">₹${totals.expense.toFixed(2)}</span></p>`;
+    }
+    document.getElementById("monthPicker").addEventListener("change", e => renderMonthlyTotals(e.target.value));
+
+    // Daily quote
+    function renderQuote() {
+      const quotes = [
+        "Wealth consists not in having great possessions, but in having few wants.",
+        "Do not save what is left after spending, but spend what is left after saving.",
+        "Beware of little expenses; a small leak will sink a great ship.",
+        "An investment in knowledge pays the best interest."
+      ];
+      const today = new Date();
+      const idx = today.getDate() % quotes.length;
+      document.getElementById("quote").innerHTML =
+        `"${quotes[idx]}"<br><small>${today.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</small>`;
+    }
+
+    // Init
+    renderAccounts();
+    renderTransactions();
+    renderDailyTotals();
+    renderQuote();
+  </script>
+</body>
+</html>
